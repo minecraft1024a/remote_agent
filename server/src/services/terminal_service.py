@@ -362,7 +362,7 @@ class TerminalService:
                     stderr_buf.append(line)
                     print(f"[{session.terminal_id}][stderr] {line.rstrip()}")
             except Exception as exc:
-                print(f"[{session.terminal_id}][stderr-read-error] {exc!r}")
+                pass  # stderr 读取异常不影响 stdout 主流程
 
         stderr_task = asyncio.create_task(_read_stderr())
 
