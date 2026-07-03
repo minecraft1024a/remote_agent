@@ -1,0 +1,25 @@
+# remote_agent_server 配置示例
+# 复制为 config.toml 并修改对应字段，或通过环境变量覆盖（RAS_ 前缀）。
+
+[server]
+host = "0.0.0.0"
+port = 8421
+
+[auth]
+# Bearer Token，业务接口鉴权用。生产环境务必修改。
+token = "your-secret-token"
+
+[limits]
+max_file_read = 5242880        # 5 MB
+max_file_write = 10485760      # 10 MB
+max_command_output = 1048576   # 1 MB
+max_command_timeout = 120
+terminal_idle_timeout = 1800
+max_terminals = 16
+
+[sudo]
+# sudo 执行配置。当 exec_command 请求 use_sudo=True 时使用。
+# 密码仅在内存中传递给 sudo -S，不写入日志。
+# 留空或 enabled=false 则禁用 sudo 执行。
+enabled = false
+password = ""
