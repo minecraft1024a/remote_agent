@@ -62,8 +62,12 @@ export RAS_SERVER__port=9000
 
 ### 3. 启动服务
 
+两种方式均可：
+
 ```bash
 python -m src
+# 或
+python run.py
 ```
 
 ### 4. 验证
@@ -160,6 +164,7 @@ remote_agent_server/
 ├── pyproject.toml
 ├── config.toml.example
 ├── README.md
+├── run.py                    # 启动脚本（python run.py）
 ├── examples/
 │   └── demo_usage.py
 ├── src/
