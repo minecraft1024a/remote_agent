@@ -1,0 +1,23 @@
+{
+  "name": "server_lister",
+  "display_name": "服务器列表查询工具",
+  "version": "1.0.0",
+  "description": "Server Lister — 以 Tool 组件形式对外提供「获取已配置远程服务器列表」能力。LLM 在调用 remote_operator Agent 执行远程操控前，应先调用此工具确认可用的 server_id：若仅一台服务器则直接使用其 id；若多台且用户未指定，则向用户询问目标服务器。",
+  "author": "MoFox Team",
+  "dependencies": {
+    "plugins": ["server_manager"],
+    "components": ["server_manager:service:server_manager"]
+  },
+  "include": [
+    {
+      "component_type": "tool",
+      "component_name": "list_servers",
+      "dependencies": ["server_manager:service:server_manager"],
+      "enabled": true
+    }
+  ],
+  "entry_point": "plugin.py",
+  "min_core_version": "1.0.0",
+  "python_dependencies": [],
+  "dependencies_required": true
+}
