@@ -70,16 +70,26 @@ class ExecCommandTool(BaseTool):
         "在指定终端中执行命令，保留会话上下文（环境变量、cd 等会保留）。"
         "根据 exit_code 判断成功与否，失败时查看 stderr 分析原因。"
         "timeout 为单条命令超时（秒），上限 120。"
+        "需要 root 权限时必须使用 use_sudo=true，严禁在 command 中拼接 "
+        "sudo/pkexec/su/doas 等提权命令——后端通常以 systemd 服务运行，"
+        "无 polkit 代理与可交互 TTY，这些提权方式会永久挂起导致超时。"
     )
 
     async def execute(
         self,
         server_id: Annotated[str, "目标服务器 ID"],
         terminal_id: Annotated[str, "终端 ID（通过 create_terminal 获取）"],
-        command: Annotated[str, "要执行的 shell 命令"],
+        command: Annotated[
+            str,
+            "要执行的 shell 命令。严禁包含 sudo/pkexec/su/doas/gksu/gksudo 等"
+            "任何提权程序，也禁止用 script 包裹 pkexec 等方式绕过；"
+            "需要 root 权限时只能用 use_sudo=true。",
+        ],
         timeout: Annotated[int, "命令超时秒数，默认 30，上限 120"] = 30,
         use_sudo: Annotated[
-            bool, "是否以 sudo 执行(如果你需要使用root请不要在命令里使用sudo而是选择这个选项)"
+            bool,
+            "是否以 sudo 执行。需要 root 权限时必须设为 true，"
+            "由后端通过 sudo -S 安全提权，不要在 command 里自行拼接 sudo。",
         ] = False,
     ) -> tuple[bool, str | dict]:
         """执行命令逻辑。

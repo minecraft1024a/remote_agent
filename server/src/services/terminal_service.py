@@ -318,6 +318,13 @@ class TerminalService:
         assert session.process.stdout is not None
         assert session.process.stderr is not None
 
+        # 防御性检测：非 sudo 路径下禁止使用会挂起的提权命令。
+        # 后端服务通常以 systemd 运行，无 polkit 认证代理、无可交互 TTY，
+        # pkexec/su/doas 等会卡在认证步骤永久挂起，导致命令超时并占用会话。
+        # 这类命令必须改走 use_sudo=True（由后端 sudo -S 安全提权）。
+        if not use_sudo:
+            self._check_unauthorized_privilege_escalation(command)
+
         sentinel = f"__CMD_DONE_{secrets.token_hex(8)}__"
         start = time.monotonic()
 
@@ -436,6 +443,57 @@ class TerminalService:
             stdout=stdout,
             stderr=stderr,
             duration_ms=duration_ms,
+        )
+
+    # 禁止在非 sudo 路径下使用的提权命令词。
+    # 选取在 systemd/无 TTY/无 polkit 环境下几乎必然挂起或无法认证的程序；
+    # sudo 不在此列，因为 use_sudo=True 才是受支持的提权路径，而手动 sudo
+    # 已由提示词约束，且无密码 sudo 仍可能工作，不在此硬拦截。
+    _FORBIDDEN_PRIV_ESCALATION_CMDS: tuple[str, ...] = (
+        "pkexec",
+        "gksu",
+        "gksudo",
+        "kdesu",
+        "doas",
+        "su",
+    )
+
+    def _check_unauthorized_privilege_escalation(self, command: str) -> None:
+        """检测非 sudo 路径下是否使用了会挂起的提权命令。
+
+        后端服务通常以 systemd 服务运行，没有图形会话、没有 polkit 认证
+        代理、也没有可交互 TTY。此时 pkexec/su/doas 等会卡在认证步骤
+        永久挂起，导致命令超时并长时间占用终端会话。这类命令必须改走
+        use_sudo=True，由后端通过 sudo -S 在子管道内安全提权。
+
+        采用词边界匹配，避免误伤包含这些子串的普通命令（如 ``suppress``、
+        ``result``）。命中时抛出 InternalError，由全局异常处理器转换为
+        统一错误响应，使调用方（Agent）能立即得到明确反馈而非超时。
+
+        Args:
+            command: 待执行的命令文本。
+
+        Raises:
+            InternalError: 命令中检测到禁用的提权程序时抛出。
+        """
+        # 构建词边界正则：匹配作为独立命令词出现的禁用程序名。
+        # 前缀允许：字符串起始、空白、或 shell 命令/参数分隔符
+        # （含引号，以覆盖 script -c "pkexec ..." 这类间接调用形态）。
+        # 后缀允许：空白或字符串结束（这些命令后必然跟参数或结束）。
+        pattern = re.compile(
+            r"(?:^|[\s;&|`(\"'])("
+            + "|".join(re.escape(c) for c in self._FORBIDDEN_PRIV_ESCALATION_CMDS)
+            + r")(?=\s|$)"
+        )
+        match = pattern.search(command)
+        if match is None:
+            return
+        matched = match.group(1)
+        raise InternalError(
+            f"检测到禁用的提权命令 '{matched}'：在非 sudo 路径下使用 "
+            f"{self._FORBIDDEN_PRIV_ESCALATION_CMDS} 等提权程序会导致后端"
+            "在 systemd/无 TTY 环境下永久挂起。请改用 exec_command 的 "
+            "use_sudo=true 参数提权，不要在 command 中拼接提权命令。"
         )
 
     async def _probe_cwd(self, session: TerminalSession) -> None:
