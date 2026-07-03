@@ -8,13 +8,14 @@ usables，通过 LLM 工具调用循环完成对远程服务器的浏览、编�
 1. 构建包含 Bot 人设的系统提示词 + 任务描述。
 2. 创建 LLMRequest，注入私有 usables 作为可用工具。
 3. 发送请求，若返回 tool_calls 则逐个执行私有工具并将结果写回上下文。
-4. 循环直至 LLM 不再调用工具（产出纯文本）或达到最大轮数。
-5. 返回最终文本作为 Agent 执行结果。
+4. 循环直至 LLM 调用 ``finish_task`` 工具显性提交结果，或达到最大轮数。
+5. 返回 ``finish_task`` 提交的汇报文本作为 Agent 执行结果。
 """
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from collections.abc import Sequence
+from typing import Annotated, Any, cast
 
 from src.app.plugin_system.api import llm_api
 from src.app.plugin_system.base import BaseAgent
@@ -29,6 +30,7 @@ from .tools import (
     DeleteFileTool,
     EditFileTool,
     ExecCommandTool,
+    FinishTaskTool,
     ListFilesTool,
     ListServersTool,
     ListTerminalsTool,
@@ -37,6 +39,12 @@ from .tools import (
 )
 
 logger = get_logger("remote_operator")
+
+#: ``finish_task`` 工具名，用于主循环检测显性结束调用
+_FINISH_TASK_TOOL_NAME: str = "finish_task"
+
+#: ``finish_task`` 工具参数名，即返回给主大模型的结果字段
+_FINISH_TASK_RESULT_ARG: str = "result"
 
 #: Agent 私有工具类列表（不进入全局注册表）
 _AGENT_USABLES: list[type] = [
@@ -50,6 +58,7 @@ _AGENT_USABLES: list[type] = [
     ExecCommandTool,
     ListTerminalsTool,
     CloseTerminalTool,
+    FinishTaskTool,
 ]
 
 
@@ -68,6 +77,7 @@ class RemoteOperatorAgent(BaseAgent):
         "适用于需要在服务器上查看文件、部署项目、排查问题等场景。"
     )
 
+    associated_types: list[str] = ["text"]
     #: 私有工具集，仅对本 Agent 可见
     usables: list[type] = _AGENT_USABLES
 
@@ -85,6 +95,28 @@ class RemoteOperatorAgent(BaseAgent):
             raise RuntimeError("remote_operator plugin config 未正确加载")
         return cfg
 
+    @staticmethod
+    def _extract_finish_result(calls: Sequence[Any]) -> str | None:
+        """从工具调用列表中提取 ``finish_task`` 的 ``result`` 参数。
+
+        遍历本轮 LLM 返回的工具调用，若存在 ``finish_task`` 调用，则
+        提取其 ``result`` 参数作为最终汇报文本返回，表示任务应结束。
+        主循环据此显性结束，不再执行其他工具或进入下一轮。
+
+        Args:
+            calls: 本轮 LLM 响应中的工具调用列表。
+
+        Returns:
+            ``finish_task`` 提交的汇报文本；未发现该调用时返回 None。
+        """
+        for call in calls:
+            if getattr(call, "name", "") != _FINISH_TASK_TOOL_NAME:
+                continue
+            args = call.args if isinstance(call.args, dict) else {}
+            result = args.get(_FINISH_TASK_RESULT_ARG, "")
+            return str(result) if result else ""
+        return None
+
     async def execute(
         self,
         task_description: Annotated[str, "要执行的远程操控任务的自然语言描述"],
@@ -101,7 +133,7 @@ class RemoteOperatorAgent(BaseAgent):
             tuple[bool, str | dict]: (是否成功, 汇报文本或错误信息)。
         """
         cfg = self._cfg()
-
+        logger.info(f"remote_operator agent 执行任务: {task_description}")
         try:
             model_set = llm_api.get_model_set_by_task(cfg.agent.model_task)
         except Exception as exc:
@@ -120,12 +152,18 @@ class RemoteOperatorAgent(BaseAgent):
         request.add_payload(LLMPayload(ROLE.USER, Text(task_description)))
 
         # 注入 Agent 私有工具
+        usable_classes = self._get_all_usables()
         tool_registry = ToolRegistry()
-        for usable_cls in self._get_all_usables():
+        for usable_cls in usable_classes:
             tool_registry.register(usable_cls)
 
         if not tool_registry.list_all():
+            logger.error("没有可用的远程操控工具，请检查 server_manager 是否已加载")
             return False, "没有可用的远程操控工具，请检查 server_manager 是否已加载"
+
+        # ToolRegistry 仅用于执行期按名反查组件类，不会自动让 LLM 看见工具。
+        # 必须把工具类作为 ROLE.TOOL payload 注入请求上下文，模型才能感知并调用。
+        request.add_payload(LLMPayload(ROLE.TOOL, cast(list[Any], usable_classes)))
 
         # 工具调用循环
         max_rounds = cfg.agent.max_rounds
@@ -147,6 +185,16 @@ class RemoteOperatorAgent(BaseAgent):
                     logger.debug(
                         f"remote_operator agent 第 {round_idx} 轮无工具调用，结束"
                     )
+                    break
+
+                # 优先检测显性结束调用 finish_task
+                finish_result = self._extract_finish_result(call_list)
+                if finish_result is not None:
+                    logger.info(
+                        f"remote_operator agent 第 {round_idx} 轮收到 "
+                        f"finish_task，显性结束任务"
+                    )
+                    final_text = finish_result
                     break
 
                 logger.info(

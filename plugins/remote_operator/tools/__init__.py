@@ -1,7 +1,7 @@
 """remote_operator 私有工具包。
 
-包含 Agent 私有 usables：服务器管理、文件操作、终端操作三类工具。
-这些工具不进入全局注册表，仅对 RemoteOperatorAgent 可见。
+包含 Agent 私有 usables：服务器管理、文件操作、终端操作、任务结束
+四类工具。这些工具不进入全局注册表，仅对 RemoteOperatorAgent 可见。
 """
 
 from .file_tools import (
@@ -12,6 +12,7 @@ from .file_tools import (
     WriteFileTool,
 )
 from .server_tools import ListServersTool
+from .task_tools import FinishTaskTool
 from .terminal_tools import (
     CloseTerminalTool,
     CreateTerminalTool,
@@ -30,4 +31,5 @@ __all__ = [
     "ExecCommandTool",
     "ListTerminalsTool",
     "CloseTerminalTool",
+    "FinishTaskTool",
 ]
