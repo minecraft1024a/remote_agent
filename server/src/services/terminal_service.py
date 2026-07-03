@@ -331,6 +331,9 @@ class TerminalService:
         else:
             payload = f"{command}\n"
             payload += f'echo "{sentinel}:$?"\n'
+        # 调试日志：打印实际写入 stdin 的 payload（屏蔽 sudo 密码）
+        safe_payload = payload.replace(self._sudo.password, "***") if use_sudo else payload
+        print(f"[{session.terminal_id}][stdin-payload] {safe_payload!r}")
         session.process.stdin.write(payload.encode())
         try:
             await session.process.stdin.drain()
@@ -352,9 +355,11 @@ class TerminalService:
                     line_bytes = await session.process.stderr.readline()
                     if not line_bytes:
                         break
-                    stderr_buf.append(line_bytes.decode("utf-8", errors="replace"))
-            except Exception:
-                pass
+                    line = line_bytes.decode("utf-8", errors="replace")
+                    stderr_buf.append(line)
+                    print(f"[{session.terminal_id}][stderr] {line.rstrip()}")
+            except Exception as exc:
+                print(f"[{session.terminal_id}][stderr-read-error] {exc!r}")
 
         stderr_task = asyncio.create_task(_read_stderr())
 
@@ -364,16 +369,29 @@ class TerminalService:
                     line_bytes = await asyncio.wait_for(
                         session.process.stdout.readline(), timeout=timeout
                     )
-                except asyncio.TimeoutError:
+                except asyncio.TimeoutError as exc:
+                    # 超时时打印已读取的部分输出，便于诊断 sudo 卡住的原因
+                    elapsed = time.monotonic() - start
+                    partial = "".join(stdout_buf)
+                    print(
+                        f"[{session.terminal_id}][TIMEOUT] "
+                        f"命令执行超时（{timeout}秒），已耗时 {elapsed:.2f}s, "
+                        f"use_sudo={use_sudo}, command={command!r}, "
+                        f"已读取 stdout 行数={len(stdout_buf)}, "
+                        f"stderr 行数={len(stderr_buf)}, "
+                        f"部分 stdout 输出:\n{partial}"
+                    )
                     raise CommandTimeoutError(
                         f"命令执行超时（{timeout}秒），会话已保留"
-                    )
+                    ) from exc
 
                 if not line_bytes:
                     # stdout EOF，shell 可能已退出
                     raise InternalError("终端 stdout 意外关闭")
 
                 line = line_bytes.decode("utf-8", errors="replace")
+                # 调试日志：实时打印 stdout 每一行
+                print(f"[{session.terminal_id}][stdout] {line.rstrip()}")
                 match = sentinel_pattern.search(line)
                 if match:
                     exit_code = int(match.group(1))
@@ -403,6 +421,13 @@ class TerminalService:
             stderr += f"\n[stderr 已截断，超过 {self._limits.max_command_output} 字节]"
 
         duration_ms = int((time.monotonic() - start) * 1000)
+        # 调试日志：命令执行结束汇总
+        print(
+            f"[{session.terminal_id}][done] exit_code={exit_code}, "
+            f"duration={duration_ms}ms, use_sudo={use_sudo}, "
+            f"stdout_bytes={len(stdout)}, stderr_bytes={len(stderr)}, "
+            f"command={command!r}"
+        )
         return CommandResult(
             exit_code=exit_code,
             stdout=stdout,
