@@ -1,0 +1,23 @@
+{
+  "name": "remote_operator",
+  "display_name": "远程服务器操控 Agent",
+  "version": "1.0.0",
+  "description": "Remote Operator — 以 Agent 组件形式对外提供远程服务器操控能力。通过内部调用 ServerManagerService，将文件操作与终端执行封装为 Agent 私有工具，供 LLM 在子代理流程中完成对远程服务器的浏览、编辑、命令执行等任务。",
+  "author": "MoFox Team",
+  "dependencies": {
+    "plugins": ["server_manager"],
+    "components": ["server_manager:service:server_manager"]
+  },
+  "include": [
+    {
+      "component_type": "agent",
+      "component_name": "remote_operator_agent",
+      "dependencies": ["server_manager:service:server_manager"],
+      "enabled": true
+    }
+  ],
+  "entry_point": "plugin.py",
+  "min_core_version": "1.0.0",
+  "python_dependencies": [],
+  "dependencies_required": true
+}

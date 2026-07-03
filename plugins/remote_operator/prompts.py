@@ -1,0 +1,105 @@
+"""Agent 系统提示词构建器。
+
+从 Core 配置的 personality 节读取 Bot 人设，拼接出远程操控子代理的
+系统提示词。人设内容来自 config/core.toml 的 [personality] 节，
+确保 Agent 在执行远程操作时仍以 Bot 的角色身份与语气产出最终回复。
+"""
+
+from __future__ import annotations
+
+from src.core.config import get_core_config
+
+
+def build_agent_system_prompt(task_description: str) -> str:
+    """构建 Agent 子代理的系统提示词。
+
+    提示词由两部分组成：
+    1. Bot 人设：从 core.toml 的 [personality] 节读取，包含昵称、
+       核心性格、人格侧面、身份、表达风格等，确保 Agent 产出的
+       最终回复符合 Bot 角色设定。
+    2. 远程操控任务指令：说明 Agent 可用的工具范围、操作约束与
+       输出要求。
+
+    Args:
+        task_description: 本次远程操控任务的自然语言描述。
+
+    Returns:
+        拼接后的完整系统提示词。
+    """
+    personality_block = _build_personality_block()
+    task_block = _build_task_block(task_description)
+    return f"{personality_block}\n\n{task_block}"
+
+
+def _build_personality_block() -> str:
+    """从 Core 配置读取人设信息并拼接为提示词块。
+
+    Returns:
+        人设提示词文本。
+    """
+    cfg = get_core_config()
+    p = cfg.personality
+
+    parts: list[str] = []
+
+    if p.nickname:
+        parts.append(f"你的名字是「{p.nickname}」。")
+
+    if p.identity:
+        parts.append(f"身份：{p.identity}")
+
+    if p.personality_core:
+        parts.append(f"核心性格：\n{p.personality_core}")
+
+    if p.personality_side:
+        parts.append(f"人格侧面：\n{p.personality_side}")
+
+    if p.reply_style:
+        parts.append(f"表达风格：\n{p.reply_style}")
+
+    if p.background_story:
+        parts.append(f"背景故事（作为背景知识，不主动复述）：\n{p.background_story}")
+
+    if p.safety_guidelines:
+        guidelines = "\n".join(f"- {g}" for g in p.safety_guidelines)
+        parts.append(f"安全准则：\n{guidelines}")
+
+    if p.negative_behaviors:
+        negatives = "\n".join(f"- {n}" for n in p.negative_behaviors)
+        parts.append(f"禁止行为：\n{negatives}")
+
+    if not parts:
+        return ""
+
+    return "【你的人设】\n" + "\n\n".join(parts)
+
+
+def _build_task_block(task_description: str) -> str:
+    """构建远程操控任务指令块。
+
+    Args:
+        task_description: 任务描述文本。
+
+    Returns:
+        任务指令文本。
+    """
+    return (
+        "【当前任务】\n"
+        f"{task_description}\n\n"
+        "【你的角色】\n"
+        "你是远程服务器操控子代理。你可以调用以下类别的私有工具来完成任务：\n"
+        "- 服务器管理：列出可用服务器、查询服务器信息\n"
+        "- 文件操作：列目录、读文件、写文件、diff 编辑文件、删除文件\n"
+        "- 终端操作：创建终端、执行命令、列出终端、关闭终端\n\n"
+        "【操作约束】\n"
+        "1. 操作前先用 list_servers 确认目标 server_id 是否存在。\n"
+        "2. 终端会话有上下文保留能力，相关联的命令应复用同一 terminal_id。\n"
+        "3. 创建终端时务必填写有意义的 remark，便于管理多个终端。\n"
+        "4. 命令执行后根据 exit_code 与 stderr 判断是否成功，失败时分析原因并重试或调整。\n"
+        "5. 完成任务或达到最大轮数后，用符合你人设的语气向用户汇报结果，不要长篇大论。\n"
+        "6. 涉及删除、写入等破坏性操作前，先确认路径正确，避免误删。\n"
+        "7. 工具调用结果中的 stdout/stderr 可能较长，重点关注末尾的退出码与错误行。\n\n"
+        "【输出要求】\n"
+        "最终回复必须符合你的人设语气，口语化、简洁、不浮夸。\n"
+        "不要在回复中暴露你是 AI 或子代理的身份，以 Bot 角色自然地汇报操作结果。"
+    )
