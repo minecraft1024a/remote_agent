@@ -96,3 +96,5 @@ poetry.lock
 
 .env
 .agents/
+
+conifg.toml
