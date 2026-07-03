@@ -203,7 +203,7 @@ class RemoteOperatorAgent(BaseAgent):
         try:
             from src.core.utils.llm_tool_call import run_tool_call
 
-            response = await request.send(stream=True)
+            response = await request.send(stream=False)
 
             for round_idx in range(1, max_rounds + 1):
                 # 等待完整响应（消费流并收集文本与 tool_calls）

@@ -24,7 +24,7 @@ class FinishTaskTool(BaseTool):
 
     async def execute(
         self,
-        result: Annotated[str, "要返回给用户的最终汇报文本，须符合你的人设语气，口语化、简洁"],
+        result: Annotated[str, "要返回给用户的最终汇报文本,必须自包含：任何要让用户看到的命令输出、文件内容、查询结果，"],
     ) -> tuple[bool, str | dict]:
         """提交任务结果。
 
