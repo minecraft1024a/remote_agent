@@ -15,12 +15,15 @@ usables，通过 LLM 工具调用循环完成对远程服务器的浏览、编�
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Annotated, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
-from src.app.plugin_system.api import llm_api
+from src.app.plugin_system.api import llm_api, stream_api
 from src.app.plugin_system.base import BaseAgent
 from src.kernel.llm import LLMPayload, ROLE, Text, ToolRegistry
 from src.kernel.logger import get_logger
+
+if TYPE_CHECKING:
+    from src.core.models.message import Message
 
 from .config import RemoteOperatorConfig
 from .prompts import build_agent_system_prompt
@@ -94,6 +97,34 @@ class RemoteOperatorAgent(BaseAgent):
         if not isinstance(cfg, RemoteOperatorConfig):
             raise RuntimeError("remote_operator plugin config 未正确加载")
         return cfg
+
+    async def _get_trigger_message(self) -> "Message | None":
+        """根据当前 stream_id 获取触发消息。
+
+        通过 stream_api 从流中取最近一条消息作为工具执行的触发消息。
+        run_tool_call 在 trigger_msg 为 None 时会跳过所有工具的实际执行，
+        因此必须提供有效的触发消息，工具才能被实例化并执行。
+
+        Returns:
+            Message | None: 流中最近的一条消息；流不存在或无消息时返回 None。
+        """
+        if not self.stream_id:
+            return None
+        try:
+            messages = await stream_api.get_stream_messages(
+                stream_id=self.stream_id,
+                limit=1,
+                offset=0,
+            )
+        except Exception as exc:
+            logger.warning(
+                f"remote_operator agent 获取触发消息失败: {exc}",
+                exc_info=True,
+            )
+            return None
+        if not messages:
+            return None
+        return messages[-1]
 
     @staticmethod
     def _extract_finish_result(calls: Sequence[Any]) -> str | None:
@@ -177,6 +208,7 @@ class RemoteOperatorAgent(BaseAgent):
             for round_idx in range(1, max_rounds + 1):
                 # 等待完整响应（消费流并收集文本与 tool_calls）
                 text = await response
+                logger.info(f"remote_operator agent 第 {round_idx} 轮 LLM 响应文本: {text}")
                 final_text = text or ""
 
                 call_list = response.call_list or []
@@ -197,7 +229,7 @@ class RemoteOperatorAgent(BaseAgent):
                     final_text = finish_result
                     break
 
-                logger.info(
+                logger.debug(
                     f"remote_operator agent 第 {round_idx} 轮收到 "
                     f"{len(call_list)} 个工具调用"
                 )
@@ -207,7 +239,7 @@ class RemoteOperatorAgent(BaseAgent):
                     calls=call_list,
                     response=response,
                     usable_map=tool_registry,
-                    trigger_msg=None,
+                    trigger_msg=await self._get_trigger_message(),
                     plugin=self.plugin,
                     stream_id=self.stream_id,
                     logger_name="remote_operator",

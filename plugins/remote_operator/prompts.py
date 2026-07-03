@@ -26,52 +26,8 @@ def build_agent_system_prompt(task_description: str) -> str:
     Returns:
         拼接后的完整系统提示词。
     """
-    personality_block = _build_personality_block()
     task_block = _build_task_block(task_description)
-    return f"{personality_block}\n\n{task_block}"
-
-
-def _build_personality_block() -> str:
-    """从 Core 配置读取人设信息并拼接为提示词块。
-
-    Returns:
-        人设提示词文本。
-    """
-    cfg = get_core_config()
-    p = cfg.personality
-
-    parts: list[str] = []
-
-    if p.nickname:
-        parts.append(f"你的名字是「{p.nickname}」。")
-
-    if p.identity:
-        parts.append(f"身份：{p.identity}")
-
-    if p.personality_core:
-        parts.append(f"核心性格：\n{p.personality_core}")
-
-    if p.personality_side:
-        parts.append(f"人格侧面：\n{p.personality_side}")
-
-    if p.reply_style:
-        parts.append(f"表达风格：\n{p.reply_style}")
-
-    if p.background_story:
-        parts.append(f"背景故事（作为背景知识，不主动复述）：\n{p.background_story}")
-
-    if p.safety_guidelines:
-        guidelines = "\n".join(f"- {g}" for g in p.safety_guidelines)
-        parts.append(f"安全准则：\n{guidelines}")
-
-    if p.negative_behaviors:
-        negatives = "\n".join(f"- {n}" for n in p.negative_behaviors)
-        parts.append(f"禁止行为：\n{negatives}")
-
-    if not parts:
-        return ""
-
-    return "【你的人设】\n" + "\n\n".join(parts)
+    return f"\n\n{task_block}"
 
 
 def _build_task_block(task_description: str) -> str:
