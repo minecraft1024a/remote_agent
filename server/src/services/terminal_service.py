@@ -16,6 +16,7 @@ import asyncio
 import os
 import re
 import secrets
+import shlex
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -322,11 +323,13 @@ class TerminalService:
 
         # 向 stdin 写入命令 + 哨兵回显
         if use_sudo:
-            # sudo -S 从 stdin 读取密码，-p '' 不输出提示符
-            # 先输出密码（带换行），再执行实际命令
+            # 关键：持久 shell 逐行消费 stdin，不能用「先写密码行再写 sudo 行」的方式
+            # —— 那样密码会被 bash 当普通命令执行，且 sudo 启动后会吃掉下一行（哨兵行）当密码。
+            # 正确做法：通过 echo <密码> | sudo -S ... 把密码经由子管道喂给 sudo，
+            # 密码不进 shell 主 stdin，哨兵行仍由 bash 正常执行。
             escaped_cmd = command.replace("'", "'\"'\"'")
-            payload = f"{self._sudo.password}\n"
-            payload += f"sudo -S -p '' bash -c '{escaped_cmd}'\n"
+            quoted_pwd = shlex.quote(self._sudo.password)
+            payload = f"echo {quoted_pwd} | sudo -S -p '' bash -c '{escaped_cmd}'\n"
             payload += f'echo "{sentinel}:$?"\n'
         else:
             payload = f"{command}\n"

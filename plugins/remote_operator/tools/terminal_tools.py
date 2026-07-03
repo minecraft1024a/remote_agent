@@ -79,7 +79,7 @@ class ExecCommandTool(BaseTool):
         command: Annotated[str, "要执行的 shell 命令"],
         timeout: Annotated[int, "命令超时秒数，默认 30，上限 120"] = 30,
         use_sudo: Annotated[
-            bool, "是否以 sudo 执行（需后端配置 sudo 支持）"
+            bool, "是否以 sudo 执行(如果你需要使用root请不要在命令里使用sudo而是选择这个选项)"
         ] = False,
     ) -> tuple[bool, str | dict]:
         """执行命令逻辑。
