@@ -15,11 +15,12 @@ usables，通过 LLM 工具调用循环完成对远程服务器的浏览、编�
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from src.app.plugin_system.api import llm_api, stream_api
 from src.app.plugin_system.base import BaseAgent
-from src.kernel.llm import LLMPayload, ROLE, Text, ToolRegistry
+from src.kernel.llm import LLMPayload, ROLE, Text, ToolRegistry, ToolResult
 from src.kernel.logger import get_logger
 
 if TYPE_CHECKING:
@@ -27,6 +28,11 @@ if TYPE_CHECKING:
 
 from .config import RemoteOperatorConfig
 from .prompts import build_agent_system_prompt
+from .utils.result_guard import (
+    DEFAULT_REFERENCE_PATTERNS,
+    build_rewrite_feedback,
+    check_result_self_contained,
+)
 from .tools import (
     CloseTerminalTool,
     CreateTerminalTool,
@@ -44,10 +50,24 @@ from .tools import (
 logger = get_logger("remote_operator")
 
 #: ``finish_task`` 工具名，用于主循环检测显性结束调用
-_FINISH_TASK_TOOL_NAME: str = "finish_task"
+_FINISH_TASK_TOOL_NAME: str = "tool-finish_task"
 
 #: ``finish_task`` 工具参数名，即返回给主大模型的结果字段
 _FINISH_TASK_RESULT_ARG: str = "result"
+
+
+@dataclass(slots=True, frozen=True)
+class FinishTaskCall:
+    """``finish_task`` 调用的解析结果。
+
+    Attributes:
+        result: ``finish_task`` 提交的汇报文本。
+        call_id: 对应 ToolCall 的 id，用于关联重写反馈的 TOOL_RESULT。
+    """
+
+    result: str
+    call_id: str | None
+
 
 #: Agent 私有工具类列表（不进入全局注册表）
 _AGENT_USABLES: list[type] = [
@@ -127,26 +147,84 @@ class RemoteOperatorAgent(BaseAgent):
         return messages[-1]
 
     @staticmethod
-    def _extract_finish_result(calls: Sequence[Any]) -> str | None:
+    def _extract_finish_result(calls: Sequence[Any]) -> FinishTaskCall | None:
         """从工具调用列表中提取 ``finish_task`` 的 ``result`` 参数。
 
         遍历本轮 LLM 返回的工具调用，若存在 ``finish_task`` 调用，则
-        提取其 ``result`` 参数作为最终汇报文本返回，表示任务应结束。
-        主循环据此显性结束，不再执行其他工具或进入下一轮。
+        提取其 ``result`` 参数及对应 ``call_id`` 返回，表示任务请求结束。
+        主循环据此决定是否显性结束、或因 result 自包含校验失败而打回重写。
 
         Args:
             calls: 本轮 LLM 响应中的工具调用列表。
 
         Returns:
-            ``finish_task`` 提交的汇报文本；未发现该调用时返回 None。
+            FinishTaskCall: ``finish_task`` 的汇报文本与 call_id；
+            未发现该调用时返回 None。
         """
         for call in calls:
             if getattr(call, "name", "") != _FINISH_TASK_TOOL_NAME:
                 continue
             args = call.args if isinstance(call.args, dict) else {}
             result = args.get(_FINISH_TASK_RESULT_ARG, "")
-            return str(result) if result else ""
+            return FinishTaskCall(
+                result=str(result) if result else "",
+                call_id=getattr(call, "id", None),
+            )
         return None
+
+    def _get_guard_patterns(self) -> tuple[str, ...]:
+        """合并内置与配置额外的代称检测模式。
+
+        Returns:
+            由内置 ``DEFAULT_REFERENCE_PATTERNS`` 与配置项
+            ``result_guard.extra_patterns`` 拼接、去重后的模式元组。
+        """
+        extra = list(self._cfg().result_guard.extra_patterns or [])
+        seen: set[str] = set()
+        merged: list[str] = []
+        for pattern in (*DEFAULT_REFERENCE_PATTERNS, *extra):
+            if not pattern or pattern in seen:
+                continue
+            seen.add(pattern)
+            merged.append(pattern)
+        return tuple(merged)
+
+    def _inject_rewrite_feedback(
+        self,
+        response: Any,
+        finish_call: FinishTaskCall,
+        matched_patterns: list[str],
+        attempt: int,
+        max_attempts: int,
+    ) -> None:
+        """向 LLM 上下文注入「拒绝 finish_task 并要求重写」的反馈。
+
+        以 ``TOOL_RESULT`` 形式写回，关联到 ``finish_task`` 的 call_id，
+        让 LLM 看到本次提交被拒绝及具体原因，从而重新调用 finish_task
+        提交自包含版本。注入后由主循环继续下一轮 LLM 请求。
+
+        Args:
+            response: 当前响应对象，需支持 ``add_payload``。
+            finish_call: 被拒绝的 finish_task 调用解析结果。
+            matched_patterns: 本次命中的代称模式列表。
+            attempt: 当前是第几次重写（从 1 开始）。
+            max_attempts: 允许的最大重写次数。
+        """
+        feedback = build_rewrite_feedback(
+            matched_patterns=matched_patterns,
+            attempt=attempt,
+            max_attempts=max_attempts,
+        )
+        response.add_payload(
+            LLMPayload(
+                ROLE.TOOL_RESULT,
+                ToolResult(
+                    value=feedback,
+                    call_id=finish_call.call_id,
+                    name=_FINISH_TASK_TOOL_NAME,
+                ),
+            )
+        )
 
     async def execute(
         self,
@@ -200,6 +278,12 @@ class RemoteOperatorAgent(BaseAgent):
         max_rounds = cfg.agent.max_rounds
         final_text = ""
 
+        # 结果自包含校验（代称检测）相关状态
+        guard_enabled = cfg.result_guard.enabled
+        guard_patterns = self._get_guard_patterns() if guard_enabled else ()
+        max_rewrite_attempts = cfg.result_guard.max_rewrite_attempts
+        rewrite_attempts = 0
+
         try:
             from src.core.utils.llm_tool_call import run_tool_call
 
@@ -220,14 +304,52 @@ class RemoteOperatorAgent(BaseAgent):
                     break
 
                 # 优先检测显性结束调用 finish_task
-                finish_result = self._extract_finish_result(call_list)
-                if finish_result is not None:
-                    logger.info(
-                        f"remote_operator agent 第 {round_idx} 轮收到 "
-                        f"finish_task，显性结束任务"
-                    )
-                    final_text = finish_result
-                    break
+                finish_call = self._extract_finish_result(call_list)
+                if finish_call is not None:
+                    # 结果自包含校验：检测 result 是否含违规代称措辞
+                    should_accept = True
+                    if guard_enabled:
+                        check = check_result_self_contained(
+                            finish_call.result,
+                            guard_patterns,
+                        )
+                        if check.has_reference and rewrite_attempts < max_rewrite_attempts:
+                            # 命中代称且仍有重写机会：打回要求重写
+                            rewrite_attempts += 1
+                            logger.warning(
+                                f"remote_operator agent 第 {round_idx} 轮 "
+                                f"finish_task 的 result 命中代称措辞 "
+                                f"{check.matched_patterns}，第 {rewrite_attempts}/"
+                                f"{max_rewrite_attempts} 次打回重写"
+                            )
+                            self._inject_rewrite_feedback(
+                                response=response,
+                                finish_call=finish_call,
+                                matched_patterns=check.matched_patterns,
+                                attempt=rewrite_attempts,
+                                max_attempts=max_rewrite_attempts,
+                            )
+                            # 准备下一轮请求：response 的 payloads 已含拒绝反馈
+                            request.payloads = response.payloads
+                            response = await request.send(stream=True)
+                            continue
+                        if check.has_reference:
+                            # 命中代称但已耗尽重写机会：记录并强制接受
+                            logger.warning(
+                                f"remote_operator agent 第 {round_idx} 轮 "
+                                f"finish_task 的 result 命中代称措辞 "
+                                f"{check.matched_patterns}，但已耗尽 "
+                                f"{max_rewrite_attempts} 次重写机会，强制接受"
+                            )
+                            should_accept = True
+
+                    if should_accept:
+                        logger.info(
+                            f"remote_operator agent 第 {round_idx} 轮收到 "
+                            f"finish_task，显性结束任务"
+                        )
+                        final_text = finish_call.result
+                        break
 
                 logger.debug(
                     f"remote_operator agent 第 {round_idx} 轮收到 "
