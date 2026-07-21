@@ -19,8 +19,8 @@ from ._base import get_server_manager_service
 class CreateTerminalTool(BaseTool):
     """在指定服务器上创建新的终端会话。"""
 
-    tool_name: str = "create_terminal"
-    tool_description: str = (
+    name: str = "create_terminal"
+    description: str = (
         "在指定服务器上创建新的终端会话，返回 terminal_id。"
         "后续的 exec_command 需传入此 terminal_id，同一终端内命令上下文保留。"
         "remark 参数务必填写有意义的用途说明，便于管理多个终端。"
@@ -65,8 +65,8 @@ class CreateTerminalTool(BaseTool):
 class ExecCommandTool(BaseTool):
     """在指定终端中执行命令。"""
 
-    tool_name: str = "exec_command"
-    tool_description: str = (
+    name: str = "exec_command"
+    description: str = (
         "在指定终端中执行命令，保留会话上下文（环境变量、cd 等会保留）。"
         "根据 exit_code 判断成功与否，失败时查看 stderr 分析原因。"
         "timeout 为单条命令超时（秒），上限 120。"
@@ -129,8 +129,8 @@ class ExecCommandTool(BaseTool):
 class ListTerminalsTool(BaseTool):
     """列出指定服务器上所有活跃的终端。"""
 
-    tool_name: str = "list_terminals"
-    tool_description: str = (
+    name: str = "list_terminals"
+    description: str = (
         "列出指定服务器上所有活跃的终端会话，包含 terminal_id、备注、"
         "工作目录等信息。用于在多个终端间定位或确认状态。"
     )
@@ -164,8 +164,8 @@ class ListTerminalsTool(BaseTool):
 class CloseTerminalTool(BaseTool):
     """关闭指定终端会话。"""
 
-    tool_name: str = "close_terminal"
-    tool_description: str = (
+    name: str = "close_terminal"
+    description: str = (
         "关闭指定终端会话，释放资源。任务完成后应主动关闭不再使用的终端。"
     )
 

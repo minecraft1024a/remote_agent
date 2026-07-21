@@ -16,8 +16,8 @@ from ._base import get_server_manager_service
 class ListServersTool(BaseTool):
     """列出所有已配置的远程服务器。"""
 
-    tool_name: str = "list_servers"
-    tool_description: str = (
+    name: str = "list_servers"
+    description: str = (
         "列出所有已配置的远程服务器，返回每台服务器的 id、名称与地址。"
         "在执行任何文件或终端操作前，先调用此工具确认可用的 server_id。"
     )

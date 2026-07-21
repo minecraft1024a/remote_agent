@@ -38,8 +38,8 @@ class ServerManagerService(BaseService):
     一个插件实例可管理多台后端服务器，调用时通过 server_id 路由。
     """
 
-    service_name: str = "server_manager"
-    service_description: str = "远程服务器文件与终端管理服务"
+    name: str = "server_manager"
+    description: str = "远程服务器文件与终端管理服务"
     version: str = "1.0.0"
 
     # ------------------------------------------------------------------

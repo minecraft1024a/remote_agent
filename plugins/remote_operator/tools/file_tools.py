@@ -33,8 +33,8 @@ class _LocalFileEditItem(BaseModel):
 class ListFilesTool(BaseTool):
     """列出指定服务器上的目录内容。"""
 
-    tool_name: str = "list_files"
-    tool_description: str = (
+    name: str = "list_files"
+    description: str = (
         "列出指定服务器上某目录的内容，返回文件与子目录列表。"
         "操作前先用 list_servers 确认 server_id。"
     )
@@ -69,8 +69,8 @@ class ListFilesTool(BaseTool):
 class ReadFileTool(BaseTool):
     """读取指定服务器上的文件内容。"""
 
-    tool_name: str = "read_file"
-    tool_description: str = (
+    name: str = "read_file"
+    description: str = (
         "读取指定服务器上某文件的内容。适用于查看配置、源码、日志等。"
         "大文件会被后端截断，关注关键部分即可。"
     )
@@ -107,8 +107,8 @@ class ReadFileTool(BaseTool):
 class WriteFileTool(BaseTool):
     """向指定服务器写入文件。"""
 
-    tool_name: str = "write_file"
-    tool_description: str = (
+    name: str = "write_file"
+    description: str = (
         "向指定服务器写入文件，若父目录不存在会自动创建。"
         "用于创建脚本、配置文件或覆盖更新内容。"
     )
@@ -149,8 +149,8 @@ class WriteFileTool(BaseTool):
 class EditFileTool(BaseTool):
     """对指定服务器上的文件进行 diff 编辑。"""
 
-    tool_name: str = "edit_file"
-    tool_description: str = (
+    name: str = "edit_file"
+    description: str = (
         "以搜索/替换方式对服务器上的文件进行精确局部修改，避免重写整个文件。"
         "edits 为有序列表，每项包含 old_text（需精确匹配，含缩进）与 new_text。"
         "若 old_text 在文件中出现多次或未匹配，该条编辑会失败。"
@@ -202,8 +202,8 @@ class EditFileTool(BaseTool):
 class DeleteFileTool(BaseTool):
     """删除指定服务器上的文件或目录。"""
 
-    tool_name: str = "delete_file"
-    tool_description: str = (
+    name: str = "delete_file"
+    description: str = (
         "删除指定服务器上的文件或目录。recursive=true 时递归删除目录。"
         "破坏性操作，执行前务必确认路径正确。"
     )

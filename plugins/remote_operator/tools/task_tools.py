@@ -15,8 +15,8 @@ from src.app.plugin_system.base import BaseTool
 class FinishTaskTool(BaseTool):
     """显性提交任务最终结果。"""
 
-    tool_name: str = "finish_task"
-    tool_description: str = (
+    name: str = "finish_task"
+    description: str = (
         "任务完成后调用此工具提交最终汇报文本，调用即表示任务结束。"
         "传入的 result 将作为本次远程操控的结果返回给用户。"
         "完成所有操作步骤后，务必调用此工具结束任务，不要只是输出纯文本。"

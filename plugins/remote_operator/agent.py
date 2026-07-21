@@ -93,8 +93,8 @@ class RemoteOperatorAgent(BaseAgent):
     确保产出回复符合 Bot 角色设定。
     """
 
-    agent_name: str = "remote_operator_agent"
-    agent_description: str = (
+    name: str = "remote_operator_agent"
+    description: str = (
         "远程服务器操控子代理。可对已配置的远程服务器执行文件浏览、"
         "读写、编辑、删除，以及创建终端、执行命令等操作。"
         "适用于需要在服务器上查看文件、部署项目、排查问题等场景。"

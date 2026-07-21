@@ -14,8 +14,8 @@ from src.app.plugin_system.base import BaseConfig, Field, SectionBase, config_se
 class RemoteOperatorConfig(BaseConfig):
     """remote_operator 插件配置。"""
 
-    config_name: ClassVar[str] = "config"
-    config_description: ClassVar[str] = "远程服务器操控 Agent 插件配置"
+    name: ClassVar[str] = "config"
+    description: ClassVar[str] = "远程服务器操控 Agent 插件配置"
 
     @config_section("plugin")
     class PluginSection(SectionBase):

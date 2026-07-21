@@ -23,8 +23,8 @@ class ServerEntry(SectionBase):
 class ServerManagerConfig(BaseConfig):
     """server_manager 插件配置。"""
 
-    config_name: ClassVar[str] = "config"
-    config_description: ClassVar[str] = "远程服务器管理插件配置"
+    name: ClassVar[str] = "config"
+    description: ClassVar[str] = "远程服务器管理插件配置"
 
     @config_section("plugin")
     class PluginSection(SectionBase):
