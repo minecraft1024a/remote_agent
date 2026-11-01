@@ -31,15 +31,15 @@ enabled = true
 
 | 工具 | 说明 |
 |------|------|
-| `list_servers()` | 列出所有已配置的远程服务器（不含 token），返回 `{"servers": [...], "count": N}` |
+| `list_servers()` | 列出所有已配置的远程服务器（含用途描述、不含 token），返回 `{"servers": [...], "count": N}` |
 
 ### 返回结构
 
 ```json
 {
   "servers": [
-    {"id": "srv-a", "name": "生产服务器 A", "base_url": "http://192.168.1.100:8421"},
-    {"id": "srv-b", "name": "开发服务器 B", "base_url": "http://10.0.0.50:8421"}
+    {"id": "srv-a", "name": "生产服务器 A", "description": "线上生产环境", "base_url": "http://192.168.1.100:8421"},
+    {"id": "srv-b", "name": "开发服务器 B", "description": "开发与联调环境", "base_url": "http://10.0.0.50:8421"}
   ],
   "count": 2
 }
@@ -69,6 +69,8 @@ LLM 调用 list_servers 工具
                                      ▼
                              Agent 执行远程操控任务
 ```
+
+服务器的 `description` 会随列表返回，供模型区分服务器用途、环境和特征。只有用户明确提到的名称、ID 或描述能对应到某台服务器时才按描述匹配；多台服务器且目标仍不明确时，继续询问用户。
 
 ## 依赖
 

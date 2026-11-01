@@ -18,7 +18,8 @@ class ListServersTool(BaseTool):
 
     name: str = "list_servers"
     description: str = (
-        "列出所有已配置的远程服务器，返回每台服务器的 id、名称与地址。"
+        "列出所有已配置的远程服务器，返回每台服务器的 id、名称、描述与地址。"
+        "描述用于区分服务器的用途、环境或特征。"
         "在执行任何文件或终端操作前，先调用此工具确认可用的 server_id。"
     )
 

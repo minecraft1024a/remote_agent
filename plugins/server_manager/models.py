@@ -10,10 +10,11 @@ from pydantic import BaseModel, Field
 
 
 class ServerInfo(BaseModel):
-    """服务器配置信息（对外不含 token）。"""
+    """服务器配置信息（包含用途描述，对外不含 token）。"""
 
     id: str
     name: str
+    description: str = Field(default="", description="服务器用途或与其他服务器的区别")
     base_url: str
 
 

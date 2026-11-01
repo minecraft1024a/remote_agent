@@ -30,7 +30,8 @@ class ListServersTool(BaseTool):
     name: str = "list_servers"
     dependencies: list[str] = ["server_manager:service:server_manager"]
     description: str = (
-        "列出所有已配置的远程服务器，返回每台服务器的 id、名称与地址（不含 token）。"
+        "列出所有已配置的远程服务器，返回每台服务器的 id、名称、用途描述与地址（不含 token）。"
+        "description 用来说明各服务器的环境、用途或其他区别，可用于匹配用户明确提到的目标。"
         "\n\n"
         "【使用时机】在调用 remote_operator Agent 执行任何远程服务器操控任务之前，"
         "必须先调用本工具确认可用的 server_id。\n\n"
@@ -42,7 +43,7 @@ class ListServersTool(BaseTool):
         "3. 若返回多台服务器，且用户未指定目标服务器，则不要调用 remote_operator "
         "Agent，而是先向用户询问要操作哪一台服务器，列出可选项供用户选择。"
         "待用户明确指定后，再调用 remote_operator Agent 并传入对应的 server_id。\n\n"
-        "【返回结构】{\"servers\": [{\"id\":..., \"name\":..., \"base_url\":...}, ...], \"count\": N}。"
+        "【返回结构】{\"servers\": [{\"id\":..., \"name\":..., \"description\":..., \"base_url\":...}, ...], \"count\": N}。"
     )
 
     async def execute(self) -> tuple[Annotated[bool, "是否成功"], Annotated[str | dict, "返回结果"]]:
@@ -57,7 +58,7 @@ class ListServersTool(BaseTool):
 
                 {
                     "servers": [
-                        {"id": "srv-a", "name": "生产服务器 A", "base_url": "http://..."},
+                        {"id": "srv-a", "name": "生产服务器 A", "description": "生产环境", "base_url": "http://..."},
                         ...
                     ],
                     "count": 2

@@ -368,12 +368,14 @@ request_timeout = 30   # HTTP 请求超时（秒）
 [[servers]]
 id = "srv-a"
 name = "生产服务器 A"
+description = "线上生产环境，运行正式业务服务"
 base_url = "http://192.168.1.100:8421"
 token = "secret-token-a"
 
 [[servers]]
 id = "srv-b"
 name = "开发服务器 B"
+description = "开发与联调环境，可用于测试变更"
 base_url = "http://10.0.0.50:8421"
 token = "secret-token-b"
 ```

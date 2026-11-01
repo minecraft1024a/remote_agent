@@ -100,19 +100,24 @@ class ServerManagerService(BaseService):
     # ------------------------------------------------------------------
 
     def list_servers(self) -> list[ServerInfo]:
-        """列出所有已配置的服务器（不含 token）。
+        """列出所有已配置的服务器及其用途描述（不含 token）。
 
         Returns:
             服务器信息列表。
         """
         cfg = self._cfg()
         return [
-            ServerInfo(id=entry.id, name=entry.name, base_url=entry.base_url)
+            ServerInfo(
+                id=entry.id,
+                name=entry.name,
+                description=entry.description,
+                base_url=entry.base_url,
+            )
             for entry in cfg.servers.items
         ]
 
     def get_server(self, server_id: str) -> ServerInfo | None:
-        """获取指定服务器的信息。
+        """获取指定服务器的信息及用途描述。
 
         Args:
             server_id: 服务器标识。
@@ -123,7 +128,12 @@ class ServerManagerService(BaseService):
         cfg = self._cfg()
         for entry in cfg.servers.items:
             if entry.id == server_id:
-                return ServerInfo(id=entry.id, name=entry.name, base_url=entry.base_url)
+                return ServerInfo(
+                    id=entry.id,
+                    name=entry.name,
+                    description=entry.description,
+                    base_url=entry.base_url,
+                )
         return None
 
     # ------------------------------------------------------------------

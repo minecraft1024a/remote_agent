@@ -30,12 +30,14 @@ request_timeout = 30   # HTTP 请求超时（秒）
 [[servers]]
 id = "srv-a"
 name = "生产服务器 A"
+description = "线上生产环境，运行正式业务服务"
 base_url = "http://192.168.1.100:8421"
 token = "secret-token-a"
 
 [[servers]]
 id = "srv-b"
 name = "开发服务器 B"
+description = "开发与联调环境，可用于测试变更"
 base_url = "http://10.0.0.50:8421"
 token = "secret-token-b"
 ```
@@ -48,6 +50,7 @@ token = "secret-token-b"
 [[servers]]
 id = "debian-agent"
 name = "Debian 远程环境"
+description = "Debian 容器，预装 GitHub CLI、Git、Python 和 npm"
 base_url = "http://127.0.0.1:8421"
 token = "与 .env 中 RAS_AUTH_TOKEN 相同"
 ```
@@ -60,8 +63,10 @@ token = "与 .env 中 RAS_AUTH_TOKEN 相同"
 
 | 方法 | 说明 |
 |------|------|
-| `list_servers() -> list[ServerInfo]` | 列出所有已配置的服务器（不含 token） |
-| `get_server(server_id) -> ServerInfo \| None` | 获取指定服务器信息 |
+| `list_servers() -> list[ServerInfo]` | 列出所有已配置的服务器（包含用途描述，不含 token） |
+| `get_server(server_id) -> ServerInfo \| None` | 获取指定服务器信息（包含用途描述，不含 token） |
+
+每台服务器可在配置中填写 `description`，说明其用途、环境、已安装工具或与其他服务器的区别。Service 会在 `list_servers()` 和 `get_server()` 的 `ServerInfo` 中返回该字段，下游工具可据此帮助模型辨认服务器；不填写时默认为空字符串。
 
 ### 文件操作
 

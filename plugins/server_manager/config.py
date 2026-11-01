@@ -1,6 +1,6 @@
 """server_manager 插件配置。
 
-存储服务器列表（ID/URL/Token）及 HTTP 客户端超时配置。
+存储服务器列表（ID/名称/描述/URL/Token）及 HTTP 客户端超时配置。
 配置文件默认路径：config/plugins/server_manager/config.toml
 """
 
@@ -16,6 +16,10 @@ class ServerEntry(SectionBase):
 
     id: str = Field(default="", description="服务器唯一标识")
     name: str = Field(default="", description="服务器显示名称")
+    description: str = Field(
+        default="",
+        description="服务器用途、环境或与其他服务器的区别",
+    )
     base_url: str = Field(default="", description="后端服务地址")
     token: str = Field(default="", description="Bearer Token")
 

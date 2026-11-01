@@ -72,9 +72,12 @@ request_timeout = 30
 [[servers]]
 id = "srv-a"
 name = "生产服务器"
+description = "生产环境，运行正式业务服务"
 base_url = "http://192.168.1.100:8421"
 token = "your-secret-token"
 ```
+
+`description` 用来说明服务器的用途、环境、已安装工具或其他区别；`server_manager` 会通过 Service 和服务器列表工具把它传给下游。
 
 如果后端由本仓库的 Docker Compose 启动，Neo-MoFox 直接运行在宿主机时，使用 Compose 的 API Token（`.env` 中的 `RAS_AUTH_TOKEN`）并将 `base_url` 设为 `http://127.0.0.1:8421`。如果 `.env` 修改了 `REMOTE_AGENT_PORT`，这里也要使用对应端口：
 
@@ -82,6 +85,7 @@ token = "your-secret-token"
 [[servers]]
 id = "debian-agent"
 name = "Debian 远程环境"
+description = "Debian 容器，预装 GitHub CLI、Git、Python 和 npm"
 base_url = "http://127.0.0.1:8421"
 token = "与 .env 中 RAS_AUTH_TOKEN 相同"
 ```
@@ -90,7 +94,7 @@ token = "与 .env 中 RAS_AUTH_TOKEN 相同"
 
 ### 4. 使用插件
 
-`server_lister` 提供 `list_servers` Tool，帮助模型确认可用的 `server_id`；`remote_operator` 提供远程操作 Agent。Agent 通过 `server_manager` 调用后端。
+`server_lister` 提供 `list_servers` Tool，帮助模型确认可用的 `server_id`；每台服务器的 `description` 会一并传给下游，用于区分其用途、环境和工具配置。`remote_operator` 提供远程操作 Agent，Agent 通过 `server_manager` 调用后端。
 
 其他插件也可以通过公开 Service API 直接调用 `server_manager`：
 

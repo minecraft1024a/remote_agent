@@ -42,7 +42,7 @@ async def demo_usage() -> None:
     count = result["count"]
     print(f"共发现 {count} 台服务器:")
     for s in servers:
-        print(f"  - {s['id']}: {s['name']} ({s['base_url']})")
+        print(f"  - {s['id']}: {s['name']} — {s['description']} ({s['base_url']})")
 
     if count == 0:
         print("没有可用的服务器，请检查 server_manager 配置")
