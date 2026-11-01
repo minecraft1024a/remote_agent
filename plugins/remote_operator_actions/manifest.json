@@ -1,0 +1,36 @@
+{
+  "name": "remote_operator_actions",
+  "display_name": "远程服务器内部操作",
+  "version": "1.0.0",
+  "description": "Remote Operator Actions — 注册远程服务器查询、文件操作、终端管理和任务结果提交 Action。各 Action 的 go_activate() 固定返回 false，因此普通聊天模型不会收到这些组件；主程序和其他插件仍可按组件签名调用。",
+  "author": "MoFox Team",
+  "dependencies": {
+    "plugins": ["server_manager"],
+    "components": ["server_manager:service:server_manager"]
+  },
+  "include": [
+    {"component_type": "action", "component_name": "list_servers", "dependencies": ["server_manager:service:server_manager"], "enabled": true},
+    {"component_type": "action", "component_name": "list_files", "dependencies": ["server_manager:service:server_manager"], "enabled": true},
+    {"component_type": "action", "component_name": "read_file", "dependencies": ["server_manager:service:server_manager"], "enabled": true},
+    {"component_type": "action", "component_name": "write_file", "dependencies": ["server_manager:service:server_manager"], "enabled": true},
+    {"component_type": "action", "component_name": "edit_file", "dependencies": ["server_manager:service:server_manager"], "enabled": true},
+    {"component_type": "action", "component_name": "delete_file", "dependencies": ["server_manager:service:server_manager"], "enabled": true},
+    {"component_type": "action", "component_name": "create_terminal", "dependencies": ["server_manager:service:server_manager"], "enabled": true},
+    {"component_type": "action", "component_name": "exec_command", "dependencies": ["server_manager:service:server_manager"], "enabled": true},
+    {"component_type": "action", "component_name": "list_terminals", "dependencies": ["server_manager:service:server_manager"], "enabled": true},
+    {"component_type": "action", "component_name": "close_terminal", "dependencies": ["server_manager:service:server_manager"], "enabled": true},
+    {"component_type": "action", "component_name": "finish_task", "dependencies": ["server_manager:service:server_manager"], "enabled": true}
+  ],
+  "entry_point": "plugin.py",
+  "min_core_version": "1.2.0-rc.2",
+  "api_version": {
+    "action_api": "2.0.0",
+    "plugin_api": "1.0.0",
+    "service_api": "1.0.0",
+    "log_api": "1.0.0"
+  },
+  "python_dependencies": [],
+  "dependencies_required": true,
+  "categories": ["tool"],
+  "tags": ["remote-server", "hidden-action", "terminal", "file-management"]
+}

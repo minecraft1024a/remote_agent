@@ -10,6 +10,7 @@
 | **server_manager** | [`plugins/server_manager/`](plugins/server_manager/) | Neo-MoFox Service 插件，管理多台后端服务器 |
 | **server_lister** | [`plugins/server_lister/`](plugins/server_lister/) | Neo-MoFox Tool 插件，查询服务器并协助选择目标 |
 | **remote_operator** | [`plugins/remote_operator/`](plugins/remote_operator/) | Neo-MoFox Agent 插件，调用服务器 Service 执行文件与终端操作 |
+| **remote_operator_actions** | [`plugins/remote_operator_actions/`](plugins/remote_operator_actions/) | 注册隐藏的 Action 组件，供主程序或其他插件按签名调用，不接入 Agent |
 
 ## 架构
 
@@ -56,7 +57,7 @@ python -m src
 
 ### 2. 安装插件
 
-将 `plugins/server_manager`、`plugins/server_lister` 和 `plugins/remote_operator` 复制到 Neo-MoFox 的插件目录，或分别建立符号链接。`server_lister` 和 `remote_operator` 依赖 `server_manager`，需确保该 Service 可用。
+将 `plugins/server_manager`、`plugins/server_lister`、`plugins/remote_operator` 和 `plugins/remote_operator_actions` 复制到 Neo-MoFox 的插件目录，或分别建立符号链接。`server_lister`、`remote_operator` 和 `remote_operator_actions` 依赖 `server_manager`，需确保该 Service 可用。
 
 ### 3. 配置插件
 
@@ -95,6 +96,8 @@ token = "与 .env 中 RAS_AUTH_TOKEN 相同"
 ### 4. 使用插件
 
 `server_lister` 提供 `list_servers` Tool，帮助模型确认可用的 `server_id`；每台服务器的 `description` 会一并传给下游，用于区分其用途、环境和工具配置。`remote_operator` 提供远程操作 Agent，Agent 通过 `server_manager` 调用后端。
+
+`remote_operator_actions` 将同类服务器操作注册为主程序 Action。它们的 `go_activate()` 固定返回 `False`，不会暴露给普通聊天模型，也不接入 `remote_operator` Agent；程序和其他插件可按 Action 签名调用。
 
 其他插件也可以通过公开 Service API 直接调用 `server_manager`：
 
@@ -136,7 +139,8 @@ remote_agent/
 └── plugins/
     ├── server_manager/        # Service 与服务器配置
     ├── server_lister/         # 查询服务器的 Tool
-    └── remote_operator/       # 远程操作 Agent 与私有工具
+    ├── remote_operator/       # 远程操作 Agent 与私有工具
+    └── remote_operator_actions/ # 注册但对普通聊天隐藏的远程操作 Action
 ```
 
 ## 技术栈
