@@ -6,7 +6,7 @@ Agent 内部通过 service_api 调用 ServerManagerService，将文件操作与
 """
 
 from src.app.plugin_system.base import BasePlugin, register_plugin
-from src.kernel.logger import get_logger
+from src.app.plugin_system.api.log_api import get_logger
 
 from .agent import RemoteOperatorAgent
 from .config import RemoteOperatorConfig
@@ -19,15 +19,7 @@ class RemoteOperatorPlugin(BasePlugin):
     """远程服务器操控 Agent 插件。"""
 
     plugin_name: str = "remote_operator"
-    plugin_description: str = (
-        "以 Agent 组件形式提供远程服务器操控能力。通过内部调用 "
-        "ServerManagerService，将文件操作与终端执行封装为 Agent 私有工具，"
-        "供 LLM 在子代理流程中完成对远程服务器的浏览、编辑、命令执行等任务。"
-    )
-    plugin_version: str = "1.0.0"
-
     configs: list[type] = [RemoteOperatorConfig]
-    dependent_components: list[str] = ["server_manager:service:server_manager"]
 
     def get_components(self) -> list[type]:
         """返回插件组件类。"""

@@ -1,13 +1,15 @@
 # remote_agent
 
-远程服务器代理系统 —— 由两部分组成的服务器远程操控方案。
+远程服务器代理系统 —— 由独立后端与 Neo-MoFox 插件组成的远程操控方案。
 
 ## 组成
 
 | 组件 | 位置 | 说明 |
 |------|------|------|
 | **remote_agent_server** | [`server/`](server/) | 独立后端服务，部署在被控服务器上，提供文件操作与终端执行的 HTTP API |
-| **server_manager** | [`plugins/server_manager/`](plugins/server_manager/) | Neo-MoFox 插件，以 Service 形式管理多台后端服务器 |
+| **server_manager** | [`plugins/server_manager/`](plugins/server_manager/) | Neo-MoFox Service 插件，管理多台后端服务器 |
+| **server_lister** | [`plugins/server_lister/`](plugins/server_lister/) | Neo-MoFox Tool 插件，查询服务器并协助选择目标 |
+| **remote_operator** | [`plugins/remote_operator/`](plugins/remote_operator/) | Neo-MoFox Agent 插件，调用服务器 Service 执行文件与终端操作 |
 
 ## 架构
 
@@ -50,9 +52,11 @@ python -m src
 
 详见 [server/README.md](server/README.md)。
 
+也可以使用项目根目录的 Docker Compose 一键构建 Debian 容器、安装远程服务与命令行工具；步骤见 [Docker 部署说明](server/README.md#docker-compose-部署)。
+
 ### 2. 安装插件
 
-将 `plugins/server_manager` 复制到 Neo-MoFox 的插件目录，或建立符号链接。
+将 `plugins/server_manager`、`plugins/server_lister` 和 `plugins/remote_operator` 复制到 Neo-MoFox 的插件目录，或分别建立符号链接。`server_lister` 和 `remote_operator` 依赖 `server_manager`，需确保该 Service 可用。
 
 ### 3. 配置插件
 
@@ -72,7 +76,23 @@ base_url = "http://192.168.1.100:8421"
 token = "your-secret-token"
 ```
 
-### 4. 使用 Service
+如果后端由本仓库的 Docker Compose 启动，Neo-MoFox 直接运行在宿主机时，使用 Compose 的 API Token（`.env` 中的 `RAS_AUTH_TOKEN`）并将 `base_url` 设为 `http://127.0.0.1:8421`。如果 `.env` 修改了 `REMOTE_AGENT_PORT`，这里也要使用对应端口：
+
+```toml
+[[servers]]
+id = "debian-agent"
+name = "Debian 远程环境"
+base_url = "http://127.0.0.1:8421"
+token = "与 .env 中 RAS_AUTH_TOKEN 相同"
+```
+
+如果 Neo-MoFox 也运行在 Docker 中，请将它接入 `remote-agent_default` 网络，并改用 `base_url = "http://remote-agent-server:8421"`。这里的 `token` 是远程服务 API Token；`.env` 中的 `GH_TOKEN_FILE` 是供远程终端里的 `gh` 和 Git 使用的 GitHub 凭据，两者用途不同。
+
+### 4. 使用插件
+
+`server_lister` 提供 `list_servers` Tool，帮助模型确认可用的 `server_id`；`remote_operator` 提供远程操作 Agent。Agent 通过 `server_manager` 调用后端。
+
+其他插件也可以通过公开 Service API 直接调用 `server_manager`：
 
 ```python
 from src.app.plugin_system.api import service_api
@@ -110,15 +130,9 @@ remote_agent/
 │       ├── routers/
 │       └── services/
 └── plugins/
-    └── server_manager/        # Neo-MoFox 插件
-        ├── manifest.json
-        ├── plugin.py
-        ├── config.py
-        ├── service.py
-        ├── models.py
-        ├── client.py
-        ├── exceptions.py
-        └── examples/
+    ├── server_manager/        # Service 与服务器配置
+    ├── server_lister/         # 查询服务器的 Tool
+    └── remote_operator/       # 远程操作 Agent 与私有工具
 ```
 
 ## 技术栈

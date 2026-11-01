@@ -10,7 +10,7 @@ LLM 在调用 remote_operator Agent 之前，应先调用本工具确认目标 s
 from __future__ import annotations
 
 from src.app.plugin_system.base import BasePlugin, register_plugin
-from src.kernel.logger import get_logger
+from src.app.plugin_system.api.log_api import get_logger
 
 from .config import ServerListerConfig
 from .tool import ListServersTool
@@ -27,15 +27,7 @@ class ServerListerPlugin(BasePlugin):
     """
 
     plugin_name: str = "server_lister"
-    plugin_description: str = (
-        "提供「获取已配置远程服务器列表」工具。LLM 在调用 remote_operator "
-        "Agent 前应先调用此工具确认 server_id：单台直接使用，多台且用户"
-        "未指定时向用户询问。"
-    )
-    plugin_version: str = "1.0.0"
-
     configs: list[type] = [ServerListerConfig]
-    dependent_components: list[str] = ["server_manager:service:server_manager"]
 
     def get_components(self) -> list[type]:
         """返回插件提供的组件类。

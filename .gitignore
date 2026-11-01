@@ -96,5 +96,8 @@ poetry.lock
 
 .env
 .agents/
+/secrets/github_token
+/workspace/*
+!/workspace/.gitkeep
 
 conifg.toml

@@ -40,6 +40,20 @@ base_url = "http://10.0.0.50:8421"
 token = "secret-token-b"
 ```
 
+### 使用 Docker Compose 后端
+
+如果 `remote_agent_server` 由仓库根目录的 Compose 启动，Neo-MoFox 运行在宿主机时，将 `base_url` 设为 `http://127.0.0.1:8421`，`token` 填 Compose `.env` 中的 `RAS_AUTH_TOKEN`。如果 `.env` 修改了 `REMOTE_AGENT_PORT`，这里也要使用对应端口：
+
+```toml
+[[servers]]
+id = "debian-agent"
+name = "Debian 远程环境"
+base_url = "http://127.0.0.1:8421"
+token = "与 .env 中 RAS_AUTH_TOKEN 相同"
+```
+
+如果 Neo-MoFox 也运行在 Docker 中，将其容器接入 `remote-agent_default` 网络，并使用 `base_url = "http://remote-agent-server:8421"`。`GH_TOKEN_FILE` 配置的 GitHub Token 供容器内的 `gh` 和 Git 使用，不能代替这里的 API Token。
+
 ## Service 方法
 
 ### 服务器管理
@@ -113,7 +127,7 @@ plugins/server_manager/
 ## 依赖
 
 - `httpx`（异步 HTTP 客户端）
-- Neo-MoFox 框架（`src.core.components`）
+- Neo-MoFox 框架公开插件接口（`src.app.plugin_system`）
 
 ## 使用示例
 

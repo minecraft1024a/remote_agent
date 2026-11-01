@@ -28,6 +28,7 @@ class ListServersTool(BaseTool):
     """
 
     name: str = "list_servers"
+    dependencies: list[str] = ["server_manager:service:server_manager"]
     description: str = (
         "列出所有已配置的远程服务器，返回每台服务器的 id、名称与地址（不含 token）。"
         "\n\n"

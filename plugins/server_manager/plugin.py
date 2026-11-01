@@ -6,9 +6,8 @@
 
 from __future__ import annotations
 
-from src.core.components.base.plugin import BasePlugin
-from src.core.components.loader import register_plugin
-from src.kernel.logger import get_logger
+from src.app.plugin_system.base import BasePlugin, register_plugin
+from src.app.plugin_system.api.log_api import get_logger
 
 from .config import ServerManagerConfig
 from .service import ServerManagerService
@@ -24,11 +23,7 @@ class ServerManagerPlugin(BasePlugin):
     """
 
     plugin_name: str = "server_manager"
-    plugin_description: str = "远程服务器文件与终端管理服务（多服务器路由）"
-    plugin_version: str = "1.0.0"
-
     configs: list[type] = [ServerManagerConfig]
-    dependent_components: list[str] = []
 
     def get_components(self) -> list[type]:
         """返回插件提供的组件类。

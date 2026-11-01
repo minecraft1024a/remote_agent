@@ -77,6 +77,54 @@ curl http://127.0.0.1:8421/api/health
 # {"code":200,"data":{"status":"ok","version":"1.0.0"},"message":"success"}
 ```
 
+## Docker Compose 部署
+
+仓库根目录的 `docker-compose.yml` 会构建一个 Debian 13 容器，并在同一容器中运行本服务和远程终端。终端环境预装 `bash`、`git`、GitHub CLI (`gh`)、Python 3、Node.js 与 npm；工作目录映射到仓库根目录的 `workspace/`。
+
+在仓库根目录执行：
+
+```bash
+cp .env.example .env
+```
+
+编辑 `.env`：为 `RAS_AUTH_TOKEN` 设置随机的 API Token，并将 `REMOTE_UID`、`REMOTE_GID` 设为运行 Docker 的主机用户 ID（可用 `id -u` 和 `id -g` 查看）。`REMOTE_AGENT_BIND` 默认只监听本机；需要从局域网访问时再改为 `0.0.0.0`。
+
+如需 GitHub 认证，创建只含 Token 的本地文件，并设置权限：
+
+```bash
+mkdir -p secrets
+umask 077
+printf '%s' 'YOUR_GITHUB_TOKEN' > secrets/github_token
+chmod 600 secrets/github_token
+```
+
+在 `.env` 中设置 `GH_TOKEN_FILE=./secrets/github_token`。该文件通过 [Compose secret](https://docs.docker.com/compose/how-tos/use-secrets/) 挂载，不会写入镜像；启动脚本会将 Token 提供给 `gh`，并配置 Git 使用 GitHub CLI 的 HTTPS 凭据助手。GitHub CLI 支持以 [`GH_TOKEN`](https://cli.github.com/manual/gh_help_environment) 在无交互环境中认证，`gh auth setup-git` 会配置 Git 凭据助手。
+
+启动服务：
+
+```bash
+docker compose up -d --build
+docker compose logs -f remote-agent-server
+```
+
+默认 API 地址为 `http://127.0.0.1:8421`。健康检查无需 Token：
+
+```bash
+curl http://127.0.0.1:8421/api/health
+```
+
+停止容器：
+
+```bash
+docker compose down
+```
+
+`workspace/` 中的文件会保留在主机上。若主机用户 UID/GID 或 Token 文件发生变化，更新 `.env` 后重新构建并启动：
+
+```bash
+docker compose up -d --build --force-recreate
+```
+
 ## API 概览
 
 所有业务接口需在请求头携带 `Authorization: Bearer <token>`，健康检查除外。
@@ -162,6 +210,9 @@ password = "your-sudo-password"
 ```
 remote_agent_server/
 ├── pyproject.toml
+├── Dockerfile
+├── docker-entrypoint.sh
+├── .dockerignore
 ├── config.toml.example
 ├── README.md
 ├── run.py                    # 启动脚本（python run.py）

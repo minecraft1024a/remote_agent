@@ -1,0 +1,48 @@
+name: remote-agent
+
+services:
+  remote-agent-server:
+    image: remote-agent-server:local
+    build:
+      context: ./server
+      args:
+        REMOTE_UID: ${REMOTE_UID:-1000}
+        REMOTE_GID: ${REMOTE_GID:-1000}
+    restart: unless-stopped
+    init: true
+    user: "${REMOTE_UID:-1000}:${REMOTE_GID:-1000}"
+    working_dir: /workspace
+    environment:
+      RAS_AUTH__TOKEN: ${RAS_AUTH_TOKEN:?Set RAS_AUTH_TOKEN in .env}
+      RAS_SERVER__HOST: 0.0.0.0
+      RAS_SERVER__PORT: "8421"
+      HOME: /home/remote-agent
+      GH_PROMPT_DISABLED: "1"
+      GH_NO_UPDATE_NOTIFIER: "1"
+      GIT_TERMINAL_PROMPT: "0"
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    ports:
+      - "${REMOTE_AGENT_BIND:-127.0.0.1}:${REMOTE_AGENT_PORT:-8421}:8421"
+    volumes:
+      - ./workspace:/workspace
+    secrets:
+      - github_token
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8421/api/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+secrets:
+  github_token:
+    file: ${GH_TOKEN_FILE:-./secrets/github_token.example}

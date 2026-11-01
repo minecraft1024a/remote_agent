@@ -1,7 +1,7 @@
 {
   "name": "server_manager",
   "display_name": "远程服务器管理器",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Server Manager — 以 Service 形式管理多台后端服务器，提供文件操作与终端会话执行能力。通过 server_id 路由到对应 remote_agent_server 后端。",
   "author": "MoFox Team",
   "dependencies": {
@@ -17,7 +17,13 @@
     }
   ],
   "entry_point": "plugin.py",
-  "min_core_version": "1.0.0",
+  "min_core_version": "1.2.0-rc.2",
+  "api_version": {
+    "log_api": "1.0.0",
+    "service_api": "1.0.0"
+  },
   "python_dependencies": ["httpx"],
-  "dependencies_required": true
+  "dependencies_required": true,
+  "categories": ["tool"],
+  "tags": ["server", "remote-server", "service", "terminal", "file-management"]
 }

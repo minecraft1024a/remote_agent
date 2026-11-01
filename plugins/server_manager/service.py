@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from typing import cast
 
-from src.core.components.base.service import BaseService
-from src.kernel.logger import get_logger
+from src.app.plugin_system.base import BaseService
+from src.app.plugin_system.api.log_api import get_logger
 
 from .client import RemoteAgentClient
 from .config import ServerManagerConfig

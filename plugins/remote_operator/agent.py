@@ -16,15 +16,19 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Annotated, Any, cast
+from typing import Annotated, Any, cast
 
 from src.app.plugin_system.api import llm_api, stream_api
+from src.app.plugin_system.api.log_api import get_logger
 from src.app.plugin_system.base import BaseAgent
-from src.kernel.llm import LLMPayload, ROLE, Text, ToolRegistry, ToolResult
-from src.kernel.logger import get_logger
-
-if TYPE_CHECKING:
-    from src.core.models.message import Message
+from src.app.plugin_system.types import (
+    LLMPayload,
+    Message,
+    ROLE,
+    Text,
+    ToolRegistry,
+    ToolResult,
+)
 
 from .config import RemoteOperatorConfig
 from .prompts import build_agent_system_prompt
@@ -101,6 +105,7 @@ class RemoteOperatorAgent(BaseAgent):
     )
 
     associated_types: list[str] = ["text"]
+    dependencies: list[str] = ["server_manager:service:server_manager"]
     #: 私有工具集，仅对本 Agent 可见
     usables: list[type] = _AGENT_USABLES
 
