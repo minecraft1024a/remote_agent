@@ -14,6 +14,7 @@ RUN apt-get update \
         nodejs \
         npm \
         passwd \
+        python-is-python3 \
         python3 \
         python3-pip \
         python3-venv \

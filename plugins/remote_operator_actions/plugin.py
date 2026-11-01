@@ -46,7 +46,7 @@ class RemoteOperatorActionsPlugin(BasePlugin):
 
     async def on_plugin_loaded(self) -> None:
         logger.info(
-            "remote_operator_actions 插件已加载，11 个 Action 默认不对 LLM 激活"
+            "remote_operator_actions 插件已加载，10 个 Action 默认不对 LLM 激活"
         )
 
     async def on_plugin_unloaded(self) -> None:

@@ -27,6 +27,7 @@ class HiddenRemoteAction(BaseAction):
     """
 
     dependencies: list[str] = ["server_manager:service:server_manager"]
+    associated_types = ["text"]
 
     async def go_activate(self) -> bool:
         """阻止 Action 出现在普通聊天模型的可用组件列表中。"""
